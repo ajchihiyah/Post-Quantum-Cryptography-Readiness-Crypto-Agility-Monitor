@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQC Readiness Monitor — German Banking SOC</title>
+<style>
+:root {
+  --bg-deep: #0a0e17; --bg-panel: #111827; --bg-card: #1a2233; --bg-hover: #1e293b;
+  --accent-cyan: #06b6d4; --accent-red: #ef4444; --accent-amber: #f59e0b;
+  --accent-emerald: #10b981; --accent-purple: #8b5cf6;
+  --text-primary: #f1f5f9; --text-secondary: #94a3b8;
+  --border: #1e293b; --border-light: #334155;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg-deep); color: var(--text-primary);
+  min-height: 100vh; padding: 20px;
+}
+
+/* Header */
+.header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+}
+.header h1 {
+  font-size: 1.4rem; font-weight: 700;
+  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  display: flex; align-items: center; gap: 10px;
+}
+.badge {
+  background: rgba(239,68,68,0.1); border: 1px solid var(--accent-red);
+  color: var(--accent-red); padding: 4px 12px; border-radius: 20px;
+  font-size: 0.75rem; font-weight: 600; animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+.meta { color: var(--text-secondary); font-size: 0.78rem; text-align: right; }
+.meta div { margin-bottom: 2px; }
+
+/* KPI */
+.kpi-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px;
+}
+.kpi-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 18px; position: relative; overflow: hidden; cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s;
+}
+.kpi-card:hover { transform: translateY(-2px); border-color: var(--border-light); }
+.kpi-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.kpi-card.critical::before { background: var(--accent-red); }
+.kpi-card.warning::before { background: var(--accent-amber); }
+.kpi-card.info::before { background: var(--accent-cyan); }
+.kpi-card.success::before { background: var(--accent-emerald); }
+.kpi-label { font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.kpi-value { font-size: 1.9rem; font-weight: 700; margin-bottom: 4px; }
+.kpi-trend { font-size: 0.78rem; display: flex; align-items: center; gap: 4px; }
+.kpi-trend.up { color: var(--accent-red); }
+.kpi-trend.down { color: var(--accent-emerald); }
+
+/* Main Grid */
+.main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.panel {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 18px;
+}
+.panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.panel-title { font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.panel-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; }
+.panel-subtitle { font-size: 0.75rem; color: var(--text-secondary); }
+
+/* Score Ring */
+.score-container { display: flex; align-items: center; gap: 20px; }
+.score-ring { position: relative; width: 130px; height: 130px; }
+.score-ring svg { transform: rotate(-90deg); }
+.score-ring-bg { fill: none; stroke: var(--border); stroke-width: 10; }
+.score-ring-progress { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 1.5s ease; }
+.score-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+.score-number { font-size: 2rem; font-weight: 800; }
+.score-label { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; }
+.score-details { flex: 1; }
+.score-bar { margin-bottom: 10px; }
+.score-bar-header { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 3px; }
+.score-bar-track { height: 7px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.score-bar-fill { height: 100%; border-radius: 4px; transition: width 1.5s ease; }
+
+/* Heatmap */
+.heatmap-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.heatmap-cell {
+  aspect-ratio: 1; border-radius: 8px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; font-size: 0.72rem;
+  cursor: pointer; transition: all 0.2s; position: relative; border: 2px solid transparent;
+}
+.heatmap-cell:hover { transform: scale(1.08); box-shadow: 0 4px 20px rgba(0,0,0,0.4); z-index: 2; border-color: rgba(255,255,255,0.2); }
+.heatmap-cell .cell-name { font-weight: 600; text-align: center; padding: 0 3px; line-height: 1.2; }
+.heatmap-cell .cell-count { font-size: 0.65rem; opacity: 0.85; margin-top: 2px; }
+.heatmap-legend { display: flex; justify-content: center; gap: 14px; margin-top: 10px; font-size: 0.68rem; color: var(--text-secondary); }
+.heatmap-legend span { display: flex; align-items: center; gap: 4px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+/* Tooltip */
+.tooltip {
+  position: fixed; background: var(--bg-panel); border: 1px solid var(--border-light);
+  border-radius: 8px; padding: 10px 14px; font-size: 0.78rem; z-index: 1000;
+  pointer-events: none; opacity: 0; transition: opacity 0.15s;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4); max-width: 280px;
+}
+.tooltip.show { opacity: 1; }
+.tooltip-title { font-weight: 600; margin-bottom: 4px; color: var(--text-primary); }
+.tooltip-row { display: flex; justify-content: space-between; gap: 20px; color: var(--text-secondary); margin-bottom: 2px; }
+
+/* Inventory */
+.search-box {
+  width: 100%; padding: 8px 12px; background: var(--bg-deep); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text-primary); font-size: 0.8rem; margin-bottom: 10px;
+  outline: none; transition: border-color 0.2s;
+}
+.search-box:focus { border-color: var(--accent-cyan); }
+.search-box::placeholder { color: var(--text-secondary); }
+.filter-bar { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.filter-chip {
+  padding: 3px 10px; border-radius: 12px; font-size: 0.7rem; font-weight: 500;
+  cursor: pointer; border: 1px solid var(--border); background: var(--bg-deep);
+  color: var(--text-secondary); transition: all 0.2s;
+}
+.filter-chip:hover, .filter-chip.active { border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(6,182,212,0.1); }
+.tree-container { max-height: 340px; overflow-y: auto; }
+.tree-item {
+  padding: 10px 12px; border-radius: 8px; margin-bottom: 4px;
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; transition: background 0.15s; border: 1px solid transparent;
+}
+.tree-item:hover { background: var(--bg-hover); border-color: var(--border-light); }
+.tree-item.selected { background: rgba(6,182,212,0.08); border-color: var(--accent-cyan); }
+.tree-item-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.tree-toggle { width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 0.7rem; cursor: pointer; border-radius: 4px; transition: background 0.2s; }
+.tree-toggle:hover { background: var(--border); }
+.tree-icon { width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; flex-shrink: 0; }
+.tree-info { min-width: 0; }
+.tree-name { font-size: 0.82rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tree-meta { font-size: 0.68rem; color: var(--text-secondary); margin-top: 2px; }
+.algo-badges { display: flex; gap: 4px; flex-shrink: 0; margin-left: 8px; }
+.algo-badge { padding: 2px 7px; border-radius: 10px; font-size: 0.62rem; font-weight: 600; border: 1px solid; cursor: pointer; transition: transform 0.15s; }
+.algo-badge:hover { transform: scale(1.1); }
+.algo-badge.rsa { background: rgba(239,68,68,0.12); color: var(--accent-red); border-color: var(--accent-red); }
+.algo-badge.ecc { background: rgba(245,158,11,0.12); color: var(--accent-amber); border-color: var(--accent-amber); }
+.algo-badge.aes { background: rgba(6,182,212,0.12); color: var(--accent-cyan); border-color: var(--accent-cyan); }
+.algo-badge.sha1 { background: rgba(239,68,68,0.12); color: var(--accent-red); border-color: var(--accent-red); }
+.algo-badge.pqc { background: rgba(16,185,129,0.12); color: var(--accent-emerald); border-color: var(--accent-emerald); }
+.algo-badge.tls { background: rgba(139,92,246,0.12); color: var(--accent-purple); border-color: var(--accent-purple); }
+
+.detail-panel { margin-top: 12px; padding: 14px; background: var(--bg-deep); border-radius: 8px; border: 1px solid var(--border); display: none; }
+.detail-panel.show { display: block; animation: slideDown 0.3s ease; }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+.detail-title { font-size: 0.85rem; font-weight: 600; margin-bottom: 10px; color: var(--accent-cyan); }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.78rem; }
+.detail-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.detail-row:last-child { border-bottom: none; }
+.detail-label { color: var(--text-secondary); }
+.detail-value { font-weight: 500; }
+.detail-actions { display: flex; gap: 8px; margin-top: 12px; }
+.detail-btn { padding: 6px 14px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; border: none; transition: opacity 0.2s; }
+.detail-btn:hover { opacity: 0.85; }
+.detail-btn.primary { background: var(--accent-cyan); color: #000; }
+.detail-btn.secondary { background: var(--border); color: var(--text-primary); }
+.detail-btn.danger { background: var(--accent-red); color: white; }
+
+/* Tabs */
+.tabs { display: flex; gap: 2px; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
+.tab { padding: 7px 14px; border-radius: 6px 6px 0 0; font-size: 0.78rem; font-weight: 500; cursor: pointer; border: none; background: transparent; color: var(--text-secondary); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all 0.2s; }
+.tab.active { color: var(--accent-cyan); border-bottom-color: var(--accent-cyan); background: rgba(6,182,212,0.05); }
+.tab:hover { color: var(--text-primary); }
+
+/* Timeline */
+.timeline { position: relative; padding-left: 22px; max-height: 360px; overflow-y: auto; }
+.timeline::before { content: ''; position: absolute; left: 7px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+.timeline-item { position: relative; padding-bottom: 14px; }
+.timeline-dot { position: absolute; left: -18px; top: 2px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--bg-card); transition: box-shadow 0.3s; }
+.timeline-dot.done { background: var(--accent-emerald); }
+.timeline-dot.active { background: var(--accent-cyan); box-shadow: 0 0 10px var(--accent-cyan); }
+.timeline-dot.pending { background: var(--border); }
+.timeline-dot.critical { background: var(--accent-red); animation: pulse 2s infinite; }
+.timeline-content { background: var(--bg-deep); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; cursor: pointer; transition: border-color 0.2s; }
+.timeline-content:hover { border-color: var(--border-light); }
+.timeline-date { font-size: 0.68rem; color: var(--text-secondary); margin-bottom: 3px; }
+.timeline-title { font-size: 0.82rem; font-weight: 600; margin-bottom: 3px; }
+.timeline-desc { font-size: 0.72rem; color: var(--text-secondary); line-height: 1.4; }
+.timeline-deps { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+.dep-tag { font-size: 0.62rem; padding: 2px 7px; border-radius: 4px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-secondary); }
+.timeline-progress-bar { height: 3px; background: var(--border); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+.timeline-progress-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+
+/* Alerts */
+.alert-feed { max-height: 320px; overflow-y: auto; }
+.alert-item { display: flex; gap: 10px; padding: 12px; border-radius: 8px; margin-bottom: 6px; border-left: 3px solid; background: var(--bg-deep); transition: all 0.2s; cursor: pointer; position: relative; }
+.alert-item:hover { transform: translateX(4px); background: var(--bg-hover); }
+.alert-item.critical { border-left-color: var(--accent-red); }
+.alert-item.warning { border-left-color: var(--accent-amber); }
+.alert-item.info { border-left-color: var(--accent-cyan); }
+.alert-item.resolved { opacity: 0.5; filter: grayscale(0.7); }
+.alert-severity { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+.alert-severity.critical { background: var(--accent-red); box-shadow: 0 0 6px var(--accent-red); }
+.alert-severity.warning { background: var(--accent-amber); }
+.alert-severity.info { background: var(--accent-cyan); }
+.alert-body { flex: 1; min-width: 0; }
+.alert-title { font-size: 0.82rem; font-weight: 600; margin-bottom: 3px; }
+.alert-desc { font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 5px; line-height: 1.4; }
+.alert-meta { display: flex; gap: 12px; font-size: 0.68rem; color: var(--text-secondary); flex-wrap: wrap; }
+.alert-actions { display: flex; gap: 6px; margin-top: 8px; }
+.alert-btn { padding: 4px 10px; border-radius: 4px; font-size: 0.68rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; }
+.alert-btn:hover { transform: translateY(-1px); }
+.alert-btn.investigate { background: var(--accent-red); color: white; }
+.alert-btn.review { background: var(--accent-amber); color: #1a1a1a; }
+.alert-btn.dismiss { background: var(--border); color: var(--text-secondary); }
+.alert-btn.resolve { background: var(--accent-emerald); color: white; }
+
+/* Agility Matrix */
+.agility-table-header { display: grid; grid-template-columns: 2fr 0.8fr 0.8fr 2fr; gap: 8px; padding: 8px 10px; background: var(--bg-deep); border-radius: 6px; margin-bottom: 6px; font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; user-select: none; }
+.agility-table-header span { display: flex; align-items: center; gap: 4px; }
+.agility-table-header span:hover { color: var(--text-primary); }
+.agility-row { display: grid; grid-template-columns: 2fr 0.8fr 0.8fr 2fr; gap: 8px; padding: 10px; border-bottom: 1px solid var(--border); align-items: center; font-size: 0.78rem; cursor: pointer; transition: background 0.15s; }
+.agility-row:hover { background: var(--bg-hover); border-radius: 6px; }
+.agility-row:last-child { border-bottom: none; }
+.agility-system { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agility-yes { color: var(--accent-emerald); font-weight: 700; }
+.agility-no { color: var(--accent-red); font-weight: 700; }
+.effort-low { color: var(--accent-emerald); }
+.effort-medium { color: var(--accent-amber); }
+.effort-high { color: var(--accent-red); }
+.agility-reason { color: var(--text-secondary); font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agility-summary { margin-top: 14px; padding: 14px; background: var(--bg-deep); border-radius: 8px; }
+.agility-summary-title { font-size: 0.8rem; font-weight: 600; margin-bottom: 10px; }
+.agility-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
+.agility-stat-value { font-size: 1.6rem; font-weight: 700; }
+.agility-stat-label { font-size: 0.68rem; color: var(--text-secondary); margin-top: 2px; }
+
+/* Modal */
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; }
+.modal-overlay.show { display: flex; }
+.modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; max-width: 500px; width: 100%; max-height: 80vh; overflow-y: auto; animation: modalIn 0.3s ease; }
+@keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-title { font-size: 1.1rem; font-weight: 600; }
+.modal-close { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-deep); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: all 0.2s; }
+.modal-close:hover { background: var(--accent-red); color: white; border-color: var(--accent-red); }
+.modal-body { font-size: 0.85rem; line-height: 1.6; }
+.modal-body p { margin-bottom: 10px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+.modal-btn { flex: 1; padding: 10px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; transition: opacity 0.2s; }
+.modal-btn:hover { opacity: 0.9; }
+.modal-btn.primary { background: var(--accent-cyan); color: #000; }
+.modal-btn.secondary { background: var(--border); color: var(--text-primary); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+/* Responsive */
+@media (max-width: 1200px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .main-grid { grid-template-columns: 1fr; } .score-container { flex-direction: column; text-align: center; } }
+@media (max-width: 768px) { .kpi-grid { grid-template-columns: 1fr; } .heatmap-grid { grid-template-columns: repeat(2, 1fr); } body { padding: 12px; } }
+</style>
+</head>
+<body>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip"></div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Details</div>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
+
+<div class="header">
+  <h1>
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="url(#headerGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <defs><linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#06b6d4"/><stop offset="100%" stop-color="#8b5cf6"/></linearGradient></defs>
+      <circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+    </svg>
+    Post-Quantum Cryptography Readiness Monitor
+  </h1>
+  <div style="display:flex;align-items:center;gap:14px;">
+    <span class="badge" id="bafinBadge">BaFin 2026 Alert Active</span>
+    <div class="meta">
+      <div id="lastScan">Last Scan: 14.07.2026 11:42 CET</div>
+      <div>Scope: <span id="assetCount">2,847</span> Assets | 14 Business Units</div>
+    </div>
+  </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card critical" onclick="showKPIModal('vulnerable')">
+    <div class="kpi-label">Vulnerable Assets</div>
+    <div class="kpi-value" style="color:var(--accent-red);" id="kpiVulnerable">1,247</div>
+    <div class="kpi-trend up"><span id="kpiVulnTrend">&#8593;</span> <span id="kpiVulnTrendText">12% from last quarter</span></div>
+  </div>
+  <div class="kpi-card warning" onclick="showKPIModal('data')">
+    <div class="kpi-label">Critical Data at Risk</div>
+    <div class="kpi-value" style="color:var(--accent-amber);" id="kpiData">847 TB</div>
+    <div class="kpi-trend up"><span id="kpiDataTrend">&#8593;</span> <span id="kpiDataTrendText">3 new systems discovered</span></div>
+  </div>
+  <div class="kpi-card info" onclick="showKPIModal('ready')">
+    <div class="kpi-label">PQC-Ready Systems</div>
+    <div class="kpi-value" style="color:var(--accent-cyan);" id="kpiReady">312</div>
+    <div class="kpi-trend down"><span id="kpiReadyTrend">&#8595;</span> <span id="kpiReadyTrendText">18% migration complete</span></div>
+  </div>
+  <div class="kpi-card success" onclick="showKPIModal('violations')">
+    <div class="kpi-label">Policy Violations (24h)</div>
+    <div class="kpi-value" style="color:var(--accent-emerald);" id="kpiViolations">7</div>
+    <div class="kpi-trend down"><span id="kpiViolTrend">&#8595;</span> <span id="kpiViolTrendText">2 resolved since yesterday</span></div>
+  </div>
+</div>
+
+<!-- Row 1: Score + Heatmap -->
+<div class="main-grid">
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <div class="panel-icon" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);">&#128202;</div>
+        Executive Quantum Readiness Score
+      </div>
+      <span class="panel-subtitle">Board Report Q3 2026</span>
+    </div>
+    <div class="score-container">
+      <div class="score-ring">
+        <svg width="130" height="130" viewBox="0 0 130 130">
+          <circle class="score-ring-bg" cx="65" cy="65" r="55"/>
+          <circle class="score-ring-progress" cx="65" cy="65" r="55" stroke="url(#scoreGrad)" stroke-dasharray="345.58" stroke-dashoffset="345.58" id="scoreCircle"/>
+          <defs><linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#ef4444"/><stop offset="50%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#06b6d4"/></linearGradient></defs>
+        </svg>
+        <div class="score-text">
+          <div class="score-number" style="color:var(--accent-amber);" id="scoreNumber">0</div>
+          <div class="score-label">of 100</div>
+        </div>
+      </div>
+      <div class="score-details">
+        <div class="score-bar">
+          <div class="score-bar-header"><span>Inventory Coverage</span><span style="color:var(--accent-amber);" id="scoreInv">68%</span></div>
+          <div class="score-bar-track"><div class="score-bar-fill" id="barInv" style="width:0%;background:var(--accent-amber);"></div></div>
+        </div>
+        <div class="score-bar">
+          <div class="score-bar-header"><span>Crypto-Agility</span><span style="color:var(--accent-red);" id="scoreAgility">23%</span></div>
+          <div class="score-bar-track"><div class="score-bar-fill" id="barAgility" style="width:0%;background:var(--accent-red);"></div></div>
+        </div>
+        <div class="score-bar">
+          <div class="score-bar-header"><span>PQC Migration Progress</span><span style="color:var(--accent-cyan);" id="scoreMigr">18%</span></div>
+          <div class="score-bar-track"><div class="score-bar-fill" id="barMigr" style="width:0%;background:var(--accent-cyan);"></div></div>
+        </div>
+        <div class="score-bar">
+          <div class="score-bar-header"><span>Staff Training & Awareness</span><span style="color:var(--accent-emerald);" id="scoreTrain">52%</span></div>
+          <div class="score-bar-track"><div class="score-bar-fill" id="barTrain" style="width:0%;background:var(--accent-emerald);"></div></div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:14px;padding:12px;background:var(--bg-deep);border-radius:8px;border-left:3px solid var(--accent-amber);">
+      <div style="font-size:0.78rem;font-weight:600;color:var(--accent-amber);margin-bottom:4px;">&#9888; BaFin Supervisory Expectation</div>
+      <div style="font-size:0.74rem;color:var(--text-secondary);line-height:1.5;">BaFin will issue PQC supervisory expectations in Q4 2026. Current readiness score indicates significant gap. Immediate action required on <span id="criticalCount" style="color:var(--accent-red);font-weight:600;">47</span> critical systems.</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <div class="panel-icon" style="background:rgba(239,68,68,0.15);color:var(--accent-red);">&#128293;</div>
+        Vulnerability Heatmap by Business Unit
+      </div>
+      <span class="panel-subtitle">Click to drill down</span>
+    </div>
+    <div class="heatmap-grid" id="heatmapGrid"></div>
+    <div class="heatmap-legend">
+      <span><div class="legend-dot" style="background:#7f1d1d;"></div> Critical (>80%)</span>
+      <span><div class="legend-dot" style="background:#b45309;"></div> High (50-80%)</span>
+      <span><div class="legend-dot" style="background:#ca8a04;"></div> Medium (30-50%)</span>
+      <span><div class="legend-dot" style="background:#15803d;"></div> Low (<30%)</span>
+    </div>
+  </div>
+</div>
+
+<!-- Row 2: Inventory + Timeline -->
+<div class="main-grid">
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <div class="panel-icon" style="background:rgba(139,92,246,0.15);color:var(--accent-purple);">&#128272;</div>
+        Cryptographic Inventory
+      </div>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('assets')">Assets</button>
+        <button class="tab" onclick="switchTab('apis')">APIs</button>
+        <button class="tab" onclick="switchTab('databases')">Databases</button>
+      </div>
+    </div>
+    <input type="text" class="search-box" id="inventorySearch" placeholder="Search systems, algorithms, or PII types..." oninput="filterInventory()">
+    <div class="filter-bar" id="filterBar">
+      <span class="filter-chip active" onclick="setAlgoFilter('all')">All</span>
+      <span class="filter-chip" onclick="setAlgoFilter('rsa')">RSA</span>
+      <span class="filter-chip" onclick="setAlgoFilter('ecc')">ECC</span>
+      <span class="filter-chip" onclick="setAlgoFilter('aes')">AES</span>
+      <span class="filter-chip" onclick="setAlgoFilter('sha1')">SHA-1</span>
+      <span class="filter-chip" onclick="setAlgoFilter('tls')">TLS 1.2</span>
+      <span class="filter-chip" onclick="setAlgoFilter('pqc')">PQC</span>
+    </div>
+    <div class="tree-container" id="inventoryTree"></div>
+    <div class="detail-panel" id="detailPanel">
+      <div class="detail-title" id="detailTitle">System Details</div>
+      <div class="detail-grid" id="detailGrid"></div>
+      <div class="detail-actions">
+        <button class="detail-btn primary" onclick="markForMigration()">Mark for Migration</button>
+        <button class="detail-btn secondary" onclick="viewDependencies()">View Dependencies</button>
+        <button class="detail-btn danger" onclick="createTicket()">Create JIRA Ticket</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <div class="panel-icon" style="background:rgba(16,185,129,0.15);color:var(--accent-emerald);">&#128197;</div>
+        PQC Migration Timeline
+      </div>
+      <span class="panel-subtitle">NIST + BSI TR-02102-1 Aligned</span>
+    </div>
+    <div class="timeline" id="migrationTimeline"></div>
+  </div>
+</div>
+
+<!-- Row 3: Alerts + Agility -->
+<div class="main-grid">
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <div class="panel-icon" style="background:rgba(239,68,68,0.15);color:var(--accent-red);">&#128680;</div>
+        Policy Violation Alert Feed
+      </div>
+      <span class="panel-subtitle">Live SOC Feed</span>
+    </div>
+    <div class="alert-feed" id="alertFeed"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <div class="panel-icon" style="background:rgba(6,182,212,0.15);color:var(--accent-cyan);">&#9889;</div>
+        Crypto-Agility Matrix
+      </div>
+      <span class="panel-subtitle">Click headers to sort</span>
+    </div>
+    <div class="agility-table-header" id="agilityHeader">
+      <span onclick="sortAgility('system')">System &#8693;</span>
+      <span onclick="sortAgility('agile')">Agile &#8693;</span>
+      <span onclick="sortAgility('effort')">Effort &#8693;</span>
+      <span>Blocker</span>
+    </div>
+    <div id="agilityList" style="max-height:280px;overflow-y:auto;"></div>
+    <div class="agility-summary">
+      <div class="agility-summary-title">Crypto-Agility Summary</div>
+      <div class="agility-summary-grid">
+        <div><div class="agility-stat-value" style="color:var(--accent-emerald);" id="agileCount">0</div><div class="agility-stat-label">Agile Systems</div></div>
+        <div><div class="agility-stat-value" style="color:var(--accent-red);" id="legacyCount">0</div><div class="agility-stat-label">Hard-Coded Legacy</div></div>
+        <div><div class="agility-stat-value" style="color:var(--accent-amber);" id="agilityRate">0%</div><div class="agility-stat-label">Agility Rate</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+
+// ==================== STATE ====================
+let currentTab = 'assets';
+let currentAlgoFilter = 'all';
+let selectedItem = null;
+let alertsData = [];
+let agilitySort = { col: null, dir: 'asc' };
+let liveUpdateInterval = null;
+
+// ==================== DATA ====================
+const businessUnits = [
+  { name: 'Retail Banking', total: 420, vulnerable: 312, risk: 'critical', desc: 'Core banking systems, ATMs, branch networks' },
+  { name: 'Corporate Banking', total: 280, vulnerable: 198, risk: 'critical', desc: 'SME lending, trade finance, treasury' },
+  { name: 'Asset Mgmt', total: 190, vulnerable: 124, risk: 'high', desc: 'Fund administration, portfolio mgmt' },
+  { name: 'Insurance', total: 340, vulnerable: 210, risk: 'critical', desc: 'Life, property, liability underwriting' },
+  { name: 'Payments', total: 150, vulnerable: 45, risk: 'medium', desc: 'SEPA, instant payments, card processing' },
+  { name: 'Treasury', total: 95, vulnerable: 28, risk: 'low', desc: 'FX, liquidity, capital markets' },
+  { name: 'Risk Mgmt', total: 120, vulnerable: 38, risk: 'low', desc: 'Credit risk, market risk, VaR models' },
+  { name: 'Compliance', total: 85, vulnerable: 52, risk: 'high', desc: 'AML, KYC, regulatory reporting' },
+  { name: 'HR Systems', total: 65, vulnerable: 48, risk: 'high', desc: 'Payroll, benefits, employee data' },
+  { name: 'IT Infra', total: 310, vulnerable: 89, risk: 'medium', desc: 'Network, servers, cloud platforms' },
+  { name: 'Data Analytics', total: 180, vulnerable: 34, risk: 'low', desc: 'BI, data science, ML pipelines' },
+  { name: 'Customer Portal', total: 220, vulnerable: 156, risk: 'critical', desc: 'Online banking, mobile web, SSO' },
+  { name: 'Mobile Banking', total: 195, vulnerable: 67, risk: 'medium', desc: 'iOS/Android apps, push notifications' },
+  { name: 'Pension Funds', total: 280, vulnerable: 198, risk: 'critical', desc: 'Retirement plans, beneficiary data' },
+  { name: 'Trade Finance', total: 140, vulnerable: 42, risk: 'medium', desc: 'Letters of credit, guarantees' },
+  { name: 'Wealth Mgmt', total: 160, vulnerable: 98, risk: 'high', desc: 'Private banking, family offices' },
+];
+
+const inventoryData = {
+  assets: [
+    { id: 'A001', name: 'Core Banking System (T24)', type: 'app', algos: ['rsa','aes','sha1'], risk: 'critical', agile: false, pii: '2.4M customers', owner: 'IT Operations', env: 'On-Prem', lastScan: '2026-07-14', migrationStatus: 'Not Started' },
+    { id: 'A002', name: 'Customer Data Warehouse', type: 'db', algos: ['rsa','ecc'], risk: 'critical', agile: false, pii: '10 years PII', owner: 'Data Engineering', env: 'Hybrid Cloud', lastScan: '2026-07-14', migrationStatus: 'Planning' },
+    { id: 'A003', name: 'Payment Gateway API', type: 'api', algos: ['ecc','tls'], risk: 'high', agile: true, pii: 'Transaction data', owner: 'Payments Team', env: 'AWS', lastScan: '2026-07-13', migrationStatus: 'In Progress' },
+    { id: 'A004', name: 'Mobile App Backend', type: 'app', algos: ['rsa','aes','sha1'], risk: 'high', agile: true, pii: 'Biometric data', owner: 'Digital Banking', env: 'Kubernetes', lastScan: '2026-07-14', migrationStatus: 'Not Started' },
+    { id: 'A005', name: 'SWIFT Connector', type: 'api', algos: ['rsa','tls'], risk: 'critical', agile: false, pii: 'Cross-border payments', owner: 'Treasury IT', env: 'On-Prem', lastScan: '2026-07-12', migrationStatus: 'Blocked' },
+    { id: 'A006', name: 'Document Vault', type: 'db', algos: ['aes','sha1'], risk: 'medium', agile: false, pii: 'Legal documents', owner: 'Legal IT', env: 'Azure', lastScan: '2026-07-14', migrationStatus: 'Planning' },
+    { id: 'A007', name: 'HR Payroll System', type: 'app', algos: ['rsa','aes'], risk: 'high', agile: false, pii: 'Employee PII', owner: 'HR IT', env: 'On-Prem', lastScan: '2026-07-11', migrationStatus: 'Not Started' },
+    { id: 'A008', name: 'Trading Platform', type: 'app', algos: ['ecc','tls'], risk: 'medium', agile: true, pii: 'Order books', owner: 'Capital Markets', env: 'Colo', lastScan: '2026-07-14', migrationStatus: 'In Progress' },
+    { id: 'A009', name: 'Customer Portal SSO', type: 'api', algos: ['rsa','tls'], risk: 'critical', agile: true, pii: 'Auth tokens', owner: 'Identity Team', env: 'AWS', lastScan: '2026-07-14', migrationStatus: 'In Progress' },
+    { id: 'A010', name: 'Backup Archive (S3)', type: 'db', algos: ['aes'], risk: 'medium', agile: false, pii: 'Historical backups', owner: 'Data Engineering', env: 'AWS S3', lastScan: '2026-07-10', migrationStatus: 'Planning' },
+  ],
+  apis: [
+    { id: 'API001', name: 'Open Banking API (PSD2)', type: 'api', algos: ['ecc','tls'], risk: 'critical', agile: true, pii: 'Account data', owner: 'Open Banking', env: 'AWS', lastScan: '2026-07-14', migrationStatus: 'In Progress' },
+    { id: 'API002', name: 'Internal Treasury API', type: 'api', algos: ['rsa','tls'], risk: 'high', agile: false, pii: 'FX rates', owner: 'Treasury IT', env: 'On-Prem', lastScan: '2026-07-13', migrationStatus: 'Not Started' },
+    { id: 'API003', name: 'KYC Verification API', type: 'api', algos: ['rsa','sha1'], risk: 'critical', agile: false, pii: 'Identity docs', owner: 'Compliance', env: 'Hybrid', lastScan: '2026-07-14', migrationStatus: 'Blocked' },
+    { id: 'API004', name: 'Card Management API', type: 'api', algos: ['ecc','aes'], risk: 'high', agile: true, pii: 'PAN numbers', owner: 'Card Services', env: 'AWS', lastScan: '2026-07-14', migrationStatus: 'In Progress' },
+    { id: 'API005', name: 'Fraud Detection API', type: 'api', algos: ['aes','tls'], risk: 'medium', agile: true, pii: 'Behavioral data', owner: 'Security', env: 'GCP', lastScan: '2026-07-12', migrationStatus: 'Completed' },
+  ],
+  databases: [
+    { id: 'DB001', name: 'Oracle Core DB (Primary)', type: 'db', algos: ['rsa','aes'], risk: 'critical', agile: false, pii: 'All customer data', owner: 'DBA Team', env: 'On-Prem', lastScan: '2026-07-14', migrationStatus: 'Not Started' },
+    { id: 'DB002', name: 'MongoDB Analytics', type: 'db', algos: ['aes'], risk: 'medium', agile: true, pii: 'Aggregated stats', owner: 'Data Science', env: 'Atlas', lastScan: '2026-07-13', migrationStatus: 'Completed' },
+    { id: 'DB003', name: 'PostgreSQL Compliance', type: 'db', algos: ['rsa','sha1'], risk: 'high', agile: false, pii: 'Audit logs', owner: 'Compliance', env: 'On-Prem', lastScan: '2026-07-11', migrationStatus: 'Planning' },
+    { id: 'DB004', name: 'Redis Session Store', type: 'db', algos: ['aes'], risk: 'low', agile: true, pii: 'Session tokens', owner: 'Platform', env: 'ElastiCache', lastScan: '2026-07-14', migrationStatus: 'Completed' },
+    { id: 'DB005', name: 'Snowflake Data Lake', type: 'db', algos: ['aes','tls'], risk: 'medium', agile: true, pii: 'ML training data', owner: 'Data Engineering', env: 'Snowflake', lastScan: '2026-07-14', migrationStatus: 'In Progress' },
+  ]
+};
+
+const algoLabels = { rsa: 'RSA-2048', ecc: 'ECC P-256', aes: 'AES-128', sha1: 'SHA-1', tls: 'TLS 1.2', pqc: 'ML-KEM' };
+const algoColors = { rsa: 'var(--accent-red)', ecc: 'var(--accent-amber)', aes: 'var(--accent-cyan)', sha1: 'var(--accent-red)', tls: 'var(--accent-purple)', pqc: 'var(--accent-emerald)' };
+
+const timelineData = [
+  { date: 'Q1 2026', title: 'Cryptographic Discovery Complete', desc: 'Full inventory of 2,847 assets mapped. 1,247 vulnerable algorithms identified.', status: 'done', progress: 100, deps: ['NIST FIPS 203', 'BSI TR-02102-1'] },
+  { date: 'Q2 2026', title: 'Risk Prioritization & Roadmap', desc: 'Business-critical systems ranked. 47 systems flagged for immediate migration.', status: 'done', progress: 100, deps: ['BaFin Risk Assessment'] },
+  { date: 'Q3 2026', title: 'Pilot PQC Deployment', desc: 'ML-KEM-768 and ML-DSA-65 pilot on non-production APIs and test databases.', status: 'active', progress: 65, deps: ['Crypto-Agile Systems'] },
+  { date: 'Q4 2026', title: 'BaFin Supervisory Expectations', desc: 'BaFin issues formal PQC requirements. All banks must demonstrate migration plans.', status: 'pending', progress: 0, deps: ['Board Approval', 'Budget Allocation'] },
+  { date: 'H1 2027', title: 'Core Banking Migration', desc: 'T24 core banking system migration to hybrid classical/PQC mode. Downtime window required.', status: 'pending', progress: 0, deps: ['Vendor Support', 'T24 v11+'] },
+  { date: 'H2 2027', title: 'Customer-Facing Systems', desc: 'Mobile apps, portals, and Open Banking APIs fully PQC-enabled.', status: 'pending', progress: 0, deps: ['App Store Releases', 'Customer Comms'] },
+  { date: '2028', title: 'Legacy Archive Re-encryption', desc: '10-year historical data re-encrypted with ML-KEM. Estimated 847 TB.', status: 'pending', progress: 0, deps: ['Storage Budget', 'Tape Migration'] },
+  { date: '2029', title: 'Full PQC Transition', desc: 'All systems operating on quantum-resistant algorithms. Classical crypto deprecated.', status: 'pending', progress: 0, deps: ['Full Validation', 'Penetration Tests'] },
+];
+
+const alertsBase = [
+  { id: 1, severity: 'critical', title: 'New RSA-2048 Deployment Detected', desc: 'Dev team deployed microservice "loan-calc-v3" using RSA-2048 key exchange. Policy violation: all new deployments must use ECC or PQC algorithms.', time: '2 min ago', source: 'CI/CD Pipeline', action: 'investigate', resolved: false, system: 'loan-calc-v3' },
+  { id: 2, severity: 'critical', title: 'SHA-1 in Production API Gateway', desc: 'Legacy API gateway "api-gw-legacy" still using SHA-1 for JWT signing. 12M requests/day processed. Immediate migration to SHA-3 or SHA-256 required.', time: '15 min ago', source: 'API Scanner', action: 'investigate', resolved: false, system: 'api-gw-legacy' },
+  { id: 3, severity: 'warning', title: 'TLS 1.2 on Customer Portal', desc: 'Customer portal accepting TLS 1.2 connections. BSI TR-02102-1 recommends minimum TLS 1.3 for all customer-facing systems by Q4 2026.', time: '1 hour ago', source: 'SSL Labs Scan', action: 'review', resolved: false, system: 'Customer Portal' },
+  { id: 4, severity: 'warning', title: 'Hard-coded AES-128 Key in Source', desc: 'Static analysis detected hard-coded symmetric key in repository "payment-utils". Crypto-agility score impacted.', time: '3 hours ago', source: 'SAST Tool', action: 'review', resolved: false, system: 'payment-utils' },
+  { id: 5, severity: 'info', title: 'PQC Algorithm Test Completed', desc: 'ML-KEM-768 performance test on test environment passed. Latency overhead: +3.2ms. Ready for pilot deployment.', time: '5 hours ago', source: 'Crypto Lab', action: 'dismiss', resolved: false, system: 'Test Environment' },
+  { id: 6, severity: 'critical', title: 'Harvest-Now-Decrypt-Later Risk: Pension DB', desc: 'Pension fund database contains 30 years of beneficiary data encrypted with RSA-2048. Adversary harvest window extends to 2035+. Highest priority migration.', time: '6 hours ago', source: 'Risk Assessment', action: 'investigate', resolved: false, system: 'Pension DB' },
+];
+
+const agilityData = [
+  { system: 'Payment Gateway API', agile: true, effort: 'Low', reason: 'Cloud-native, config-driven crypto', type: 'api' },
+  { system: 'Mobile App Backend', agile: true, effort: 'Medium', reason: 'Microservices, requires redeploy', type: 'app' },
+  { system: 'Open Banking API', agile: true, effort: 'Low', reason: 'Spring Boot, JCE provider swap', type: 'api' },
+  { system: 'Fraud Detection API', agile: true, effort: 'Low', reason: 'Python, cryptography library', type: 'api' },
+  { system: 'Core Banking (T24)', agile: false, effort: 'High', reason: 'Monolithic, vendor dependency', type: 'app' },
+  { system: 'Customer Data Warehouse', agile: false, effort: 'High', reason: 'Legacy ETL, hard-coded keys', type: 'db' },
+  { system: 'SWIFT Connector', agile: false, effort: 'High', reason: 'Third-party, SWIFT CSP compliance', type: 'api' },
+  { system: 'KYC Verification API', agile: false, effort: 'Medium', reason: 'Embedded HSM firmware', type: 'api' },
+  { system: 'Oracle Core DB', agile: false, effort: 'High', reason: 'TDE with legacy wallet', type: 'db' },
+  { system: 'HR Payroll System', agile: false, effort: 'Medium', reason: 'SAP integration, custom crypto', type: 'app' },
+  { system: 'Trading Platform', agile: true, effort: 'Medium', reason: 'Modular architecture, HSM upgrade needed', type: 'app' },
+  { system: 'Customer Portal SSO', agile: true, effort: 'Low', reason: 'OAuth2/OIDC, provider abstraction', type: 'api' },
+];
+
+// ==================== MODAL SYSTEM ====================
+function showModal(title, bodyHTML, actions) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = bodyHTML;
+  const actionsContainer = document.getElementById('modalActions');
+  actionsContainer.innerHTML = actions.map(a =>
+    `<button class="modal-btn ${a.class}" onclick="${a.action.toString().startsWith('()') ? a.action.toString().replace('() => ', '') : a.action + '()'}">${a.text}</button>`
+  ).join('');
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+// ==================== HEATMAP ====================
+function getHeatmapColor(risk) {
+  const map = { critical: '#7f1d1d', high: '#b45309', medium: '#ca8a04', low: '#15803d' };
+  return map[risk] || '#15803d';
+}
+
+function renderHeatmap() {
+  const grid = document.getElementById('heatmapGrid');
+  grid.innerHTML = businessUnits.map((bu, i) => {
+    const pct = Math.round((bu.vulnerable / bu.total) * 100);
+    const color = getHeatmapColor(bu.risk);
+    return `<div class="heatmap-cell" style="background:${color};" data-index="${i}">
+      <div class="cell-name">${bu.name}</div>
+      <div class="cell-count">${pct}%</div>
+    </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.heatmap-cell').forEach(cell => {
+    cell.addEventListener('mouseenter', (e) => showTooltip(e, cell));
+    cell.addEventListener('mouseleave', hideTooltip);
+    cell.addEventListener('click', () => {
+      const idx = parseInt(cell.dataset.index);
+      showBUDetail(businessUnits[idx]);
+    });
+  });
+}
+
+function showTooltip(e, cell) {
+  const idx = parseInt(cell.dataset.index);
+  const bu = businessUnits[idx];
+  const pct = Math.round((bu.vulnerable / bu.total) * 100);
+  const tooltip = document.getElementById('tooltip');
+  tooltip.innerHTML = `
+    <div class="tooltip-title">${bu.name}</div>
+    <div class="tooltip-row"><span>Vulnerable:</span><span style="color:var(--accent-red);font-weight:600;">${bu.vulnerable}</span></div>
+    <div class="tooltip-row"><span>Total:</span><span>${bu.total}</span></div>
+    <div class="tooltip-row"><span>Risk Level:</span><span style="color:${getHeatmapColor(bu.risk)};font-weight:600;text-transform:uppercase;">${bu.risk}</span></div>
+    <div class="tooltip-row"><span>Percentage:</span><span>${pct}%</span></div>
+    <div style="margin-top:6px;font-size:0.7rem;color:var(--text-secondary);line-height:1.4;">${bu.desc}</div>
+  `;
+  tooltip.classList.add('show');
+  positionTooltip(e);
+}
+
+function positionTooltip(e) {
+  const tooltip = document.getElementById('tooltip');
+  let x = e.clientX + 15;
+  let y = e.clientY + 15;
+  if (x + 280 > window.innerWidth) x = e.clientX - 295;
+  if (y + 150 > window.innerHeight) y = e.clientY - 160;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
+}
+
+function hideTooltip() {
+  document.getElementById('tooltip').classList.remove('show');
+}
+
+document.addEventListener('mousemove', (e) => {
+  const tooltip = document.getElementById('tooltip');
+  if (tooltip.classList.contains('show')) positionTooltip(e);
+});
+
+function showBUDetail(bu) {
+  const pct = Math.round((bu.vulnerable / bu.total) * 100);
+  showModal(
+    bu.name + ' — Business Unit Details',
+    `<p><strong>Risk Level:</strong> <span style="color:${getHeatmapColor(bu.risk)};text-transform:uppercase;font-weight:600;">${bu.risk}</span></p>
+    <p><strong>Total Assets:</strong> ${bu.total}</p>
+    <p><strong>Vulnerable Assets:</strong> <span style="color:var(--accent-red);font-weight:600;">${bu.vulnerable}</span> (${pct}%)</p>
+    <p><strong>Description:</strong> ${bu.desc}</p>
+    <p><strong>Recommended Action:</strong> ${pct > 70 ? 'Immediate migration required. Schedule emergency board review.' : pct > 50 ? 'High priority. Include in Q3 migration sprint.' : 'Standard priority. Include in 2027 roadmap.'}</p>
+    <div style="margin-top:12px;padding:10px;background:var(--bg-deep);border-radius:6px;">
+      <div style="font-size:0.75rem;font-weight:600;margin-bottom:6px;">Vulnerability Breakdown</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.72rem;">
+        <div class="detail-row"><span class="detail-label">RSA-2048</span><span class="detail-value">${Math.floor(bu.vulnerable * 0.45)}</span></div>
+        <div class="detail-row"><span class="detail-label">ECC P-256</span><span class="detail-value">${Math.floor(bu.vulnerable * 0.25)}</span></div>
+        <div class="detail-row"><span class="detail-label">AES-128</span><span class="detail-value">${Math.floor(bu.vulnerable * 0.20)}</span></div>
+        <div class="detail-row"><span class="detail-label">SHA-1</span><span class="detail-value">${Math.floor(bu.vulnerable * 0.10)}</span></div>
+      </div>
+    </div>`,
+    [{ text: 'Generate Report', class: 'primary', action: () => alert('Report generated for ' + bu.name) },
+     { text: 'Close', class: 'secondary', action: closeModal }]
+  );
+}
+
+// ==================== INVENTORY ====================
+function renderInventory() {
+  const container = document.getElementById('inventoryTree');
+  const search = document.getElementById('inventorySearch').value.toLowerCase();
+  let items = [...inventoryData[currentTab]];
+
+  if (search) {
+    items = items.filter(item =>
+      item.name.toLowerCase().includes(search) ||
+      item.pii.toLowerCase().includes(search) ||
+      item.algos.some(a => algoLabels[a].toLowerCase().includes(search)) ||
+      item.owner.toLowerCase().includes(search)
+    );
+  }
+
+  if (currentAlgoFilter !== 'all') {
+    items = items.filter(item => item.algos.includes(currentAlgoFilter));
+  }
+
+  container.innerHTML = items.map(item => {
+    const riskColor = item.risk === 'critical' ? 'var(--accent-red)' : item.risk === 'high' ? 'var(--accent-amber)' : 'var(--accent-cyan)';
+    const agileIcon = item.agile ? '&#10003;' : '&#10007;';
+    const agileColor = item.agile ? 'var(--accent-emerald)' : 'var(--accent-red)';
+    const icon = item.type === 'app' ? '&#128187;' : item.type === 'api' ? '&#128268;' : '&#128452;';
+    const isSelected = selectedItem && selectedItem.id === item.id ? 'selected' : '';
+    return `<div class="tree-item ${isSelected}" onclick="selectItem('${item.id}')" data-id="${item.id}">
+      <div class="tree-item-left">
+        <div class="tree-toggle" onclick="event.stopPropagation();">&#9662;</div>
+        <div class="tree-icon" style="background:${riskColor}18;color:${riskColor};">${icon}</div>
+        <div class="tree-info">
+          <div class="tree-name">${item.name}</div>
+          <div class="tree-meta">${item.pii} &bull; Crypto-Agile: <span style="color:${agileColor}">${agileIcon}</span></div>
+        </div>
+      </div>
+      <div class="algo-badges">
+        ${item.algos.map(a => `<span class="algo-badge ${a}" onclick="event.stopPropagation();filterByAlgo('${a}')">${algoLabels[a]}</span>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  if (items.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:0.85rem;">No matching systems found</div>`;
+  }
+}
+
+function switchTab(type) {
+  currentTab = type;
+  selectedItem = null;
+  document.getElementById('detailPanel').classList.remove('show');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  renderInventory();
+}
+
+function filterInventory() {
+  renderInventory();
+}
+
+function setAlgoFilter(algo) {
+  currentAlgoFilter = algo;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  renderInventory();
+}
+
+function filterByAlgo(algo) {
+  currentAlgoFilter = algo;
+  document.querySelectorAll('.filter-chip').forEach(c => {
+    c.classList.toggle('active', c.textContent.toLowerCase().includes(algo) || (algo === 'sha1' && c.textContent === 'SHA-1'));
+  });
+  renderInventory();
+}
+
+function selectItem(id) {
+  const allItems = [...inventoryData.assets, ...inventoryData.apis, ...inventoryData.databases];
+  selectedItem = allItems.find(i => i.id === id);
+  if (!selectedItem) return;
+
+  renderInventory();
+
+  const panel = document.getElementById('detailPanel');
+  panel.classList.add('show');
+  document.getElementById('detailTitle').textContent = selectedItem.name;
+  document.getElementById('detailGrid').innerHTML = `
+    <div class="detail-row"><span class="detail-label">ID</span><span class="detail-value">${selectedItem.id}</span></div>
+    <div class="detail-row"><span class="detail-label">Type</span><span class="detail-value">${selectedItem.type.toUpperCase()}</span></div>
+    <div class="detail-row"><span class="detail-label">Risk</span><span class="detail-value" style="color:${selectedItem.risk === 'critical' ? 'var(--accent-red)' : selectedItem.risk === 'high' ? 'var(--accent-amber)' : 'var(--accent-cyan)'}">${selectedItem.risk.toUpperCase()}</span></div>
+    <div class="detail-row"><span class="detail-label">Environment</span><span class="detail-value">${selectedItem.env}</span></div>
+    <div class="detail-row"><span class="detail-label">Owner</span><span class="detail-value">${selectedItem.owner}</span></div>
+    <div class="detail-row"><span class="detail-label">PII Exposure</span><span class="detail-value">${selectedItem.pii}</span></div>
+    <div class="detail-row"><span class="detail-label">Crypto-Agile</span><span class="detail-value" style="color:${selectedItem.agile ? 'var(--accent-emerald)' : 'var(--accent-red)'}">${selectedItem.agile ? 'YES' : 'NO'}</span></div>
+    <div class="detail-row"><span class="detail-label">Last Scan</span><span class="detail-value">${selectedItem.lastScan}</span></div>
+    <div class="detail-row"><span class="detail-label">Migration Status</span><span class="detail-value">${selectedItem.migrationStatus}</span></div>
+    <div class="detail-row"><span class="detail-label">Algorithms</span><span class="detail-value">${selectedItem.algos.map(a => algoLabels[a]).join(', ')}</span></div>
+  `;
+}
+
+function markForMigration() {
+  if (!selectedItem) return;
+  selectedItem.migrationStatus = 'Marked for Q3 Sprint';
+  showModal('Migration Marked', `<p><strong>${selectedItem.name}</strong> has been marked for migration in the Q3 2026 sprint.</p><p>Ticket ID: <code>PQC-MIG-${selectedItem.id}</code></p><p>Assigned to: ${selectedItem.owner}</p>`, [{text:'OK',class:'primary',action:closeModal}]);
+  selectItem(selectedItem.id);
+}
+
+function viewDependencies() {
+  if (!selectedItem) return;
+  const deps = selectedItem.type === 'app' ? ['Oracle Core DB', 'Redis Session Store', 'API Gateway'] :
+               selectedItem.type === 'api' ? ['Core Banking System', 'Customer Portal SSO'] :
+               ['Core Banking System', 'Data Warehouse', 'Backup Archive'];
+  showModal('Dependencies: ' + selectedItem.name,
+    `<p><strong>Upstream Dependencies:</strong></p><ul style="margin-left:16px;margin-bottom:12px;">${deps.map(d => `<li>${d}</li>`).join('')}</ul>
+     <p><strong>Impact Assessment:</strong> Changing algorithms on this system will affect ${deps.length} downstream systems.</p>`,
+    [{text:'View Dependency Graph',class:'primary',action:()=>alert('Opening dependency graph...')},{text:'Close',class:'secondary',action:closeModal}]
+  );
+}
+
+function createTicket() {
+  if (!selectedItem) return;
+  showModal('JIRA Ticket Created',
+    `<p><strong>Ticket:</strong> PQC-${selectedItem.id}-2026</p>
+     <p><strong>Summary:</strong> Migrate ${selectedItem.name} to post-quantum cryptography</p>
+     <p><strong>Priority:</strong> ${selectedItem.risk === 'critical' ? 'Highest' : selectedItem.risk === 'high' ? 'High' : 'Medium'}</p>
+     <p><strong>Assignee:</strong> ${selectedItem.owner}</p>
+     <p><strong>Labels:</strong> PQC, ${selectedItem.algos.join(', ').toUpperCase()}</p>`,
+    [{text:'Open in JIRA',class:'primary',action:()=>window.open('https://jira.example.com','_blank')},{text:'Close',class:'secondary',action:closeModal}]
+  );
+}
+
+// ==================== TIMELINE ====================
+function renderTimeline() {
+  const container = document.getElementById('migrationTimeline');
+  container.innerHTML = timelineData.map((item, i) => {
+    const color = item.status === 'done' ? 'var(--accent-emerald)' : item.status === 'active' ? 'var(--accent-cyan)' : 'var(--text-secondary)';
+    return `<div class="timeline-item" onclick="showTimelineDetail(${i})">
+      <div class="timeline-dot ${item.status}"></div>
+      <div class="timeline-content">
+        <div class="timeline-date">${item.date}</div>
+        <div class="timeline-title">${item.title}</div>
+        <div class="timeline-desc">${item.desc}</div>
+        <div class="timeline-deps">${item.deps.map(d => `<span class="dep-tag">${d}</span>`).join('')}</div>
+        <div class="timeline-progress-bar"><div class="timeline-progress-fill" style="width:${item.progress}%;background:${color};"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showTimelineDetail(index) {
+  const item = timelineData[index];
+  showModal(item.title,
+    `<p><strong>Timeline:</strong> ${item.date}</p>
+     <p><strong>Status:</strong> <span style="color:${item.status === 'done' ? 'var(--accent-emerald)' : item.status === 'active' ? 'var(--accent-cyan)' : 'var(--text-secondary)'};text-transform:uppercase;font-weight:600;">${item.status}</span></p>
+     <p><strong>Progress:</strong> ${item.progress}%</p>
+     <p><strong>Description:</strong> ${item.desc}</p>
+     <p><strong>Dependencies:</strong> ${item.deps.join(', ')}</p>`,
+    [{text:'Update Progress',class:'primary',action:()=>{item.progress=Math.min(100,item.progress+10);renderTimeline();closeModal();}},
+     {text:'Close',class:'secondary',action:closeModal}]
+  );
+}
+
+// ==================== ALERTS ====================
+function initAlerts() {
+  alertsData = [...alertsBase];
+  renderAlerts();
+}
+
+function renderAlerts() {
+  const container = document.getElementById('alertFeed');
+  const activeAlerts = alertsData.filter(a => !a.resolved);
+  container.innerHTML = activeAlerts.map(alert => {
+    const btnText = alert.action === 'investigate' ? 'Investigate' : alert.action === 'review' ? 'Review' : 'Dismiss';
+    return `<div class="alert-item ${alert.severity}" id="alert-${alert.id}">
+      <div class="alert-severity ${alert.severity}"></div>
+      <div class="alert-body">
+        <div class="alert-title">${alert.title}</div>
+        <div class="alert-desc">${alert.desc}</div>
+        <div class="alert-meta"><span>&#9201; ${alert.time}</span><span>&#128225; ${alert.source}</span></div>
+        <div class="alert-actions">
+          <button class="alert-btn ${alert.action}" onclick="handleAlert(${alert.id}, '${alert.action}')">${btnText}</button>
+          <button class="alert-btn resolve" onclick="resolveAlert(${alert.id})">&#10003; Resolve</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  if (activeAlerts.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:30px;color:var(--text-secondary);font-size:0.85rem;">&#127881; All alerts resolved! Great work.</div>`;
+  }
+
+  document.getElementById('kpiViolations').textContent = activeAlerts.length;
+}
+
+function handleAlert(id, action) {
+  const alert = alertsData.find(a => a.id === id);
+  if (!alert) return;
+  if (action === 'dismiss') {
+    resolveAlert(id);
+    return;
+  }
+  showModal(alert.title,
+    `<p><strong>System:</strong> ${alert.system}</p>
+     <p><strong>Severity:</strong> <span style="color:var(--accent-${alert.severity === 'critical' ? 'red' : alert.severity === 'warning' ? 'amber' : 'cyan'});text-transform:uppercase;font-weight:600;">${alert.severity}</span></p>
+     <p><strong>Source:</strong> ${alert.source}</p>
+     <p><strong>Detected:</strong> ${alert.time}</p>
+     <p><strong>Description:</strong> ${alert.desc}</p>
+     <div style="margin-top:12px;padding:10px;background:var(--bg-deep);border-radius:6px;">
+       <div style="font-size:0.75rem;font-weight:600;margin-bottom:6px;">Recommended Actions</div>
+       <ul style="font-size:0.72rem;color:var(--text-secondary);margin-left:16px;line-height:1.6;">
+         <li>Verify system configuration</li>
+         <li>Check compliance against BSI TR-02102-1</li>
+         <li>Schedule remediation within SLA</li>
+         <li>Update risk register</li>
+       </ul>
+     </div>`,
+    [{text:'Create Ticket',class:'primary',action:()=>alert('Ticket PQC-ALERT-' + id + ' created')},
+     {text:'Close',class:'secondary',action:closeModal}]
+  );
+}
+
+function resolveAlert(id) {
+  const alert = alertsData.find(a => a.id === id);
+  if (alert) {
+    alert.resolved = true;
+    const el = document.getElementById('alert-' + id);
+    if (el) {
+      el.style.opacity = '0';
+      el.style.transform = 'translateX(20px)';
+      setTimeout(() => renderAlerts(), 300);
+    } else {
+      renderAlerts();
+    }
+  }
+}
+
+function addRandomAlert() {
+  const newAlert = {
+    id: Date.now(),
+    severity: Math.random() > 0.6 ? 'critical' : Math.random() > 0.4 ? 'warning' : 'info',
+    title: ['New vulnerable algorithm detected', 'Policy violation in CI/CD', 'Crypto library outdated', 'Certificate expiring soon', 'Quantum threat simulation failed'][Math.floor(Math.random() * 5)],
+    desc: 'Automated scan detected a new cryptographic policy violation. Immediate review required.',
+    time: 'Just now',
+    source: ['CI/CD Pipeline', 'API Scanner', 'SAST Tool', 'Crypto Lab', 'Network Monitor'][Math.floor(Math.random() * 5)],
+    action: 'investigate',
+    resolved: false,
+    system: 'Auto-detected'
+  };
+  alertsData.unshift(newAlert);
+  renderAlerts();
+}
+
+// ==================== AGILITY MATRIX ====================
+function renderAgility() {
+  let data = [...agilityData];
+  if (agilitySort.col) {
+    data.sort((a, b) => {
+      let va = a[agilitySort.col], vb = b[agilitySort.col];
+      if (agilitySort.col === 'effort') { va = {Low:1,Medium:2,High:3}[va]; vb = {Low:1,Medium:2,High:3}[vb]; }
+      if (agilitySort.col === 'agile') { va = va ? 1 : 0; vb = vb ? 1 : 0; }
+      return agilitySort.dir === 'asc' ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
+    });
+  }
+
+  const container = document.getElementById('agilityList');
+  container.innerHTML = data.map(item => `
+    <div class="agility-row" onclick="showAgilityDetail('${item.system}')">
+      <span class="agility-system">${item.system}</span>
+      <span class="${item.agile ? 'agility-yes' : 'agility-no'}">${item.agile ? 'YES' : 'NO'}</span>
+      <span class="effort-${item.effort.toLowerCase()}">${item.effort}</span>
+      <span class="agility-reason">${item.reason}</span>
+    </div>
+  `).join('');
+
+  const agile = data.filter(d => d.agile).length;
+  const legacy = data.filter(d => !d.agile).length;
+  document.getElementById('agileCount').textContent = agile;
+  document.getElementById('legacyCount').textContent = legacy;
+  document.getElementById('agilityRate').textContent = Math.round((agile / data.length) * 100) + '%';
+}
+
+function sortAgility(col) {
+  if (agilitySort.col === col) {
+    agilitySort.dir = agilitySort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    agilitySort.col = col;
+    agilitySort.dir = 'asc';
+  }
+  renderAgility();
+}
+
+function showAgilityDetail(systemName) {
+  const item = agilityData.find(d => d.system === systemName);
+  if (!item) return;
+  showModal(systemName,
+    `<p><strong>Crypto-Agile:</strong> <span class="${item.agile ? 'agility-yes' : 'agility-no'}">${item.agile ? 'YES' : 'NO'}</span></p>
+     <p><strong>Migration Effort:</strong> <span class="effort-${item.effort.toLowerCase()}">${item.effort}</span></p>
+     <p><strong>Blocker:</strong> ${item.reason}</p>
+     <p><strong>Type:</strong> ${item.type.toUpperCase()}</p>
+     <div style="margin-top:12px;padding:10px;background:var(--bg-deep);border-radius:6px;">
+       <div style="font-size:0.75rem;font-weight:600;margin-bottom:6px;">Migration Strategy</div>
+       <div style="font-size:0.72rem;color:var(--text-secondary);line-height:1.5;">
+         ${item.agile ? 'This system supports algorithm swapping via configuration. Plan: update crypto provider, test in staging, deploy with feature flag.' : 'This system requires code changes. Plan: engage vendor, schedule maintenance window, implement hybrid mode, validate with penetration tests.'}
+       </div>
+     </div>`,
+    [{text:'View Migration Plan',class:'primary',action:()=>alert('Opening migration plan for ' + systemName)},
+     {text:'Close',class:'secondary',action:closeModal}]
+  );
+}
+
+// ==================== KPI MODAL ====================
+function showKPIModal(type) {
+  const titles = { vulnerable: 'Vulnerable Assets Detail', data: 'Critical Data at Risk', ready: 'PQC-Ready Systems', violations: 'Policy Violations' };
+  const bodies = {
+    vulnerable: `<p><strong>Total Vulnerable:</strong> 1,247 assets</p>
+      <p><strong>By Algorithm:</strong></p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.75rem;margin:8px 0;">
+        <div class="detail-row"><span class="detail-label">RSA-2048</span><span class="detail-value">561</span></div>
+        <div class="detail-row"><span class="detail-label">ECC P-256</span><span class="detail-value">312</span></div>
+        <div class="detail-row"><span class="detail-label">AES-128</span><span class="detail-value">249</span></div>
+        <div class="detail-row"><span class="detail-label">SHA-1</span><span class="detail-value">125</span></div>
+      </div>
+      <p><strong>Trend:</strong> +12% from last quarter (1,114 assets)</p>`,
+    data: `<p><strong>Total Data at Risk:</strong> 847 TB</p>
+      <p><strong>By Category:</strong></p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.75rem;margin:8px 0;">
+        <div class="detail-row"><span class="detail-label">Customer PII</span><span class="detail-value">420 TB</span></div>
+        <div class="detail-row"><span class="detail-label">Transaction Records</span><span class="detail-value">280 TB</span></div>
+        <div class="detail-row"><span class="detail-label">Audit Logs</span><span class="detail-value">98 TB</span></div>
+        <div class="detail-row"><span class="detail-label">Backups</span><span class="detail-value">49 TB</span></div>
+      </div>`,
+    ready: `<p><strong>PQC-Ready Systems:</strong> 312</p>
+      <p><strong>By Algorithm:</strong></p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.75rem;margin:8px 0;">
+        <div class="detail-row"><span class="detail-label">ML-KEM-768</span><span class="detail-value">145</span></div>
+        <div class="detail-row"><span class="detail-label">ML-DSA-65</span><span class="detail-value">98</span></div>
+        <div class="detail-row"><span class="detail-label">Hybrid Mode</span><span class="detail-value">69</span></div>
+      </div>
+      <p><strong>Migration Rate:</strong> 18% complete</p>`,
+    violations: `<p><strong>Active Violations:</strong> ${alertsData.filter(a => !a.resolved).length}</p>
+      <p><strong>By Severity:</strong></p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.75rem;margin:8px 0;">
+        <div class="detail-row"><span class="detail-label">Critical</span><span class="detail-value" style="color:var(--accent-red)">3</span></div>
+        <div class="detail-row"><span class="detail-label">Warning</span><span class="detail-value" style="color:var(--accent-amber)">2</span></div>
+        <div class="detail-row"><span class="detail-label">Info</span><span class="detail-value" style="color:var(--accent-cyan)">1</span></div>
+      </div>
+      <p><strong>Resolved Today:</strong> 2</p>`
+  };
+  showModal(titles[type], bodies[type], [{text:'Export CSV',class:'primary',action:()=>alert('Exporting CSV...')},{text:'Close',class:'secondary',action:closeModal}]);
+}
+
+// ==================== LIVE UPDATES ====================
+function animateScore() {
+  const target = 35;
+  const circle = document.getElementById('scoreCircle');
+  const number = document.getElementById('scoreNumber');
+  const circumference = 2 * Math.PI * 55;
+  const offset = circumference - (target / 100) * circumference;
+
+  setTimeout(() => {
+    circle.style.strokeDashoffset = offset;
+  }, 300);
+
+  let current = 0;
+  const interval = setInterval(() => {
+    current++;
+    number.textContent = current;
+    if (current >= target) clearInterval(interval);
+  }, 40);
+}
+
+function animateBars() {
+  setTimeout(() => {
+    document.getElementById('barInv').style.width = '68%';
+    document.getElementById('barAgility').style.width = '23%';
+    document.getElementById('barMigr').style.width = '18%';
+    document.getElementById('barTrain').style.width = '52%';
+  }, 500);
+}
+
+function startLiveUpdates() {
+  liveUpdateInterval = setInterval(() => {
+    const now = new Date();
+    const timeStr = now.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' CET';
+    document.getElementById('lastScan').textContent = 'Last Scan: ' + timeStr;
+
+    if (Math.random() > 0.85) {
+      addRandomAlert();
+    }
+  }, 15000);
+}
+
+// ==================== INIT ====================
+function init() {
+  renderHeatmap();
+  renderInventory();
+  renderTimeline();
+  initAlerts();
+  renderAgility();
+  animateScore();
+  animateBars();
+  startLiveUpdates();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
