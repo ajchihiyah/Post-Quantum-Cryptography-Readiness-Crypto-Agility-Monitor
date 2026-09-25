@@ -175,6 +175,14 @@ The dashboard uses a **state-driven rendering pattern**:
 - Modal system is reusable across all panels
 - Live updates via `setInterval` with randomized alert injection
 
+**Current implementation:** Zero-dependency, single-file vanilla JS (HTML/CSS/JS) —
+deployable in restricted SOC environments with no build step or external dependencies.
+
+**Production implementation path:** Where multi-user, real-time, or enterprise integration
+requirements demand it, the production build is implemented in **React with D3.js/Chart.js**
+for componentized state management, API-driven data layers, and role-based access —
+migrating the current state-driven rendering pattern into a component architecture.
+
 ---
 
 ## Future Enhancements
