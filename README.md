@@ -1,3 +1,5 @@
+<img width="1910" height="939" alt="image" src="https://github.com/user-attachments/assets/e9edcc10-ed5c-4083-8a86-d8cd2be5e076" />
+
 # Post-Quantum Cryptography Readiness & Crypto-Agility Monitor
 
 ## Overview
